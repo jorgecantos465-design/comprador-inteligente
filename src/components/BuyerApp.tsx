@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildOffers, calculateStrategy } from "../domain/calculate";
 import { downloadStrategyCsv } from "../domain/exportCsv";
+import { clearLocalSession, loadLocalSession, saveLocalSession } from "../domain/localSession";
 import { similarity } from "../domain/normalize";
 import { parseOrderText } from "../domain/parseOrderText";
 import type { Alias, PriceList, PriceRow, PurchaseItem, Supplier, Unit } from "../domain/types";
@@ -10,10 +11,11 @@ const units: Unit[] = ["kg", "g", "l", "ml", "unit", "pack"];
 const money = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" });
 
 export default function BuyerApp() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [lists, setLists] = useState<PriceList[]>([]);
-  const [items, setItems] = useState<PurchaseItem[]>([]);
-  const [aliases, setAliases] = useState<Alias[]>([]);
+  const [initialSession] = useState(() => typeof window === "undefined" ? {} : loadLocalSession(window.localStorage));
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSession.session?.suppliers ?? []);
+  const [lists, setLists] = useState<PriceList[]>(initialSession.session?.lists ?? []);
+  const [items, setItems] = useState<PurchaseItem[]>(initialSession.session?.items ?? []);
+  const [aliases, setAliases] = useState<Alias[]>(initialSession.session?.aliases ?? []);
   const [supplierDraft, setSupplierDraft] = useState({ name: "", distance: "", notes: "" });
   const [itemDraft, setItemDraft] = useState({ buyer: "Jorge", product: "", quantity: 1, unit: "kg" as Unit });
   const [aliasDraft, setAliasDraft] = useState({ from: "", to: "" });
@@ -22,6 +24,9 @@ export default function BuyerApp() {
   const [expandedSupplierIds, setExpandedSupplierIds] = useState<string[]>([]);
   const [busySupplierId, setBusySupplierId] = useState("");
   const [message, setMessage] = useState("");
+  const [storageNotice, setStorageNotice] = useState(initialSession.session ? "Se restauró la última sesión guardada en este navegador." : "");
+  const [storageWarning, setStorageWarning] = useState(initialSession.error ?? "");
+  const skipNextAutoSaveRef = useRef(false);
   const supplierNameRef = useRef<HTMLInputElement>(null);
 
   const strategy = useMemo(
@@ -31,6 +36,15 @@ export default function BuyerApp() {
   const offers = useMemo(() => buildOffers(lists, aliases), [lists, aliases]);
   const unresolved = strategy.comparisons.filter((comparison) => comparison.unresolved);
   const detectedProducts = lists.reduce((total, list) => total + list.rows.filter((row) => row.product.trim()).length, 0);
+
+  useEffect(() => {
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      return;
+    }
+    const error = saveLocalSession(window.localStorage, { suppliers, lists, aliases, items });
+    setStorageWarning(error ?? "");
+  }, [suppliers, lists, aliases, items]);
 
   function addSupplier(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,6 +151,32 @@ export default function BuyerApp() {
       : list));
   }
 
+  function saveSessionNow() {
+    const error = saveLocalSession(window.localStorage, { suppliers, lists, aliases, items });
+    setStorageWarning(error ?? "");
+    if (!error) setStorageNotice("Sesión guardada en este navegador.");
+  }
+
+  function deleteSavedSession() {
+    const error = clearLocalSession(window.localStorage);
+    setStorageWarning(error ?? "");
+    if (!error) setStorageNotice("Se borró la sesión guardada. Los datos actuales siguen visibles.");
+  }
+
+  function deleteEverything() {
+    skipNextAutoSaveRef.current = true;
+    const error = clearLocalSession(window.localStorage);
+    setStorageWarning(error ?? "");
+    setStorageNotice(error ? "" : "Se borraron los datos actuales y la sesión guardada.");
+    setSuppliers([]);
+    setLists([]);
+    setItems([]);
+    setAliases([]);
+    setImportedItems([]);
+    setOrderText("");
+    setExpandedSupplierIds([]);
+  }
+
   const supplierName = (id?: string) => suppliers.find((supplier) => supplier.id === id)?.name ?? "Sin proveedor";
   const percent = (value?: number) => value === undefined ? "—" : `${value.toFixed(1)}%`;
 
@@ -156,6 +196,21 @@ export default function BuyerApp() {
       </nav>
 
       {message && <div className="alert error">{message}</div>}
+      {storageNotice && <div className="alert success">{storageNotice}</div>}
+      {storageWarning && <div className="alert warning">{storageWarning}</div>}
+
+      <aside className="local-session">
+        <div>
+          <strong>Guardado local opcional</strong>
+          <p>Los datos se guardan solo en este navegador. No se suben a un servidor.</p>
+        </div>
+        <div className="session-actions">
+          <button onClick={saveSessionNow}>Guardar sesión ahora</button>
+          <button className="secondary" onClick={() => setItems([])}>Limpiar pedido</button>
+          <button className="secondary" onClick={deleteSavedSession}>Borrar sesión guardada</button>
+          <button className="danger secondary" onClick={deleteEverything}>Borrar todo</button>
+        </div>
+      </aside>
 
       <section id="proveedores">
         <div className="section-title">
@@ -307,7 +362,7 @@ export default function BuyerApp() {
           </>
         )}
       </section>
-      <footer>Los archivos se procesan localmente y desaparecen al recargar la página.</footer>
+      <footer>Se guardan solo datos procesados en este navegador. Los archivos originales no se conservan.</footer>
     </main>
   );
 }

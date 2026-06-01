@@ -7,8 +7,8 @@ de compra, normalizar productos con reglas deterministas, comparar ofertas y
 generar una estrategia optima de compra.
 
 La Fase 1 no usa IA generativa, login, backend ni base de datos. Todos los
-archivos se procesan localmente en el navegador y el estado se conserva solo
-durante la sesion.
+archivos se procesan localmente en el navegador. Solo los datos procesados
+necesarios para reconstruir la ultima sesion se guardan en `localStorage`.
 
 ## 2. Alcance
 
@@ -31,7 +31,7 @@ durante la sesion.
 
 - OCR para PDF escaneados.
 - Extraccion perfecta de cualquier PDF.
-- Persistencia entre sesiones.
+- Persistencia remota o historial de sesiones.
 - Usuarios, permisos o historial.
 - Stock, costos de envio, impuestos complejos, descuentos por volumen, plazos
   de pago o minimos de compra.
@@ -44,7 +44,7 @@ durante la sesion.
 | --- | --- | --- |
 | Ejecucion | Frontend-only | Evita backend y mantiene las listas dentro del navegador. |
 | Framework | Astro + React + TypeScript | Astro arma la aplicacion y React resuelve el flujo interactivo. |
-| Estado | Store en memoria | No hay persistencia en Fase 1. |
+| Estado | Store en memoria + `localStorage` | Recupera la ultima sesion local sin guardar archivos originales. |
 | Excel | `xlsx` (SheetJS) | Lectura y exportacion de planillas. |
 | CSV | Parser CSV con soporte de delimitador y encoding | Evita parseos manuales fragiles. |
 | PDF | `pdfjs-dist` | Extrae texto de PDF digitales. |
@@ -448,9 +448,10 @@ interface BuyerState {
 }
 ```
 
-No usar `localStorage` por defecto: las listas pueden contener informacion
-comercial sensible. Si se agrega persistencia temporal mas adelante, debe ser
-opt-in y explicita.
+Usar `localStorage` solo para los datos procesados necesarios para reconstruir
+la ultima sesion. No guardar archivos originales. La UI debe explicar que la
+informacion queda en el navegador y ofrecer acciones para borrar la sesion
+guardada o borrar todo.
 
 ## 13. Manejo de errores
 
@@ -507,7 +508,7 @@ opt-in y explicita.
 7. El reporte muestra estrategia dividida por proveedor y total.
 8. El reporte identifica items sin oferta y no los oculta dentro del total.
 9. El usuario exporta el resultado a Excel o CSV.
-10. Al recargar la pagina, los datos desaparecen.
+10. Al recargar la pagina, la ultima sesion local se restaura con un aviso visible.
 
 ## 16. Implementacion por incrementos
 

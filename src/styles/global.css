@@ -57,7 +57,11 @@ th { color: #65706c; font-size: 11px; letter-spacing: .04em; text-transform: upp
 .empty { padding: 22px; border: 1px dashed #d2d4ce; border-radius: 9px; color: #78817e; text-align: center; }
 .alert { margin: 8px 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
 .warning { color: #7b5222; background: #fff5d8; }
+.success { color: #245c52; background: #edf5f2; }
 .error, .unresolved { color: #8d3a2b; background: #fff1ec; }
+.local-session { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 0; padding: 14px; border: 1px solid #d8e3df; border-radius: 12px; background: #f7fbf9; }
+.local-session p { margin-top: 4px; color: #65706c; font-size: 13px; }
+.session-actions { display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
 .chip, .suggestion { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 999px; background: #edf5f2; color: #245c52; font-size: 12px; }
 .chip button { min-height: 0; padding: 0; border: 0; background: transparent; color: #ad482e; }
@@ -79,4 +83,4 @@ textarea { width: 100%; min-height: 145px; padding: 10px; resize: vertical; bord
 .summary-grid { margin-top: 14px; grid-template-columns: repeat(3, 1fr); }
 .summary p { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 13px; }
 footer { padding: 16px; color: #70807a; font-size: 12px; text-align: center; }
-@media (max-width: 850px) { main { width: min(100% - 20px, 720px); padding-top: 30px; } section { padding: 16px; } .section-title, .card-head { display: grid; } .form-grid, .order-form, .alias-form, .metrics, .summary-grid { grid-template-columns: 1fr; } .supplier-metrics { grid-template-columns: repeat(3, 1fr); } .supplier-actions { justify-content: space-between; } }
+@media (max-width: 850px) { main { width: min(100% - 20px, 720px); padding-top: 30px; } section { padding: 16px; } .section-title, .card-head, .local-session { display: grid; } .form-grid, .order-form, .alias-form, .metrics, .summary-grid { grid-template-columns: 1fr; } .supplier-metrics { grid-template-columns: repeat(3, 1fr); } .supplier-actions { justify-content: space-between; } .session-actions { justify-content: flex-start; } }

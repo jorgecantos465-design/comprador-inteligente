@@ -2,7 +2,8 @@
 
 MVP web para comparar listas de precios de múltiples proveedores y generar una
 estrategia de compra. Todo se procesa localmente en el navegador: no hay login,
-backend, base de datos ni persistencia en `localStorage`.
+backend ni base de datos remota. La última sesión se guarda en `localStorage`
+para poder reutilizar listas procesadas sin subir archivos a un servidor.
 
 ## Requisitos
 
@@ -68,9 +69,16 @@ lista manual dentro del proveedor y completar, agregar o quitar filas.
 - Aplica singularización básica.
 - Agrupa coincidencias exactas.
 - Sugiere variantes parecidas para confirmación manual.
-- Mantiene aliases únicamente durante la sesión actual.
+- Mantiene aliases en la sesión local del navegador.
 
 Las variantes dudosas no se fusionan automáticamente.
+
+## Guardado local
+
+La aplicación guarda automáticamente proveedores, listas procesadas, aliases y
+el pedido actual en este navegador. No conserva los archivos originales. La
+pantalla incluye controles para guardar manualmente, limpiar solo el pedido,
+borrar la sesión guardada o borrar todo.
 
 ## Límites de Fase 1
 
