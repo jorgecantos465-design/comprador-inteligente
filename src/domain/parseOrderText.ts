@@ -30,7 +30,10 @@ export function parseOrderText(text: string): PurchaseItem[] {
     }
 
     const parsed = parseProductLine(line);
-    if (!parsed) return [];
+    if (!parsed) {
+      buyer = line;
+      return [];
+    }
     return [{
       id: crypto.randomUUID(),
       buyer,

@@ -11,10 +11,12 @@ export function normalizeProductName(value: string): string {
     .toLocaleLowerCase("es")
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
+    .replace(/\b(?:cajas?\s+)?(?:(?:\d+\s*)?x\s*)?(?:\d+(?:[.,]\d+)?\s*)?(?:kg|kilos?|kilogramos?|g|gr|gs|gramos?|l|lt|litros?|ml|mililitros?)\b\.?/giu, " ")
     .replace(/[^\p{Letter}\p{Number}]+/gu, " ")
     .trim()
     .split(/\s+/u)
     .filter(Boolean)
+    .filter((token) => token !== "arrollada")
     .map(singularize);
 
   return tokens.join(" ");

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildOffers, calculateStrategy } from "../domain/calculate";
+import { calculateStrategy } from "../domain/calculate";
 import { downloadStrategyCsv } from "../domain/exportCsv";
 import { clearLocalSession, loadLocalSession, saveLocalSession } from "../domain/localSession";
-import { similarity } from "../domain/normalize";
 import { parseOrderText } from "../domain/parseOrderText";
 import type { Alias, PriceList, PriceRow, PurchaseItem, Supplier, Unit } from "../domain/types";
 import { parsePriceFile } from "../parsers/parseFile";
@@ -18,7 +17,6 @@ export default function BuyerApp() {
   const [aliases, setAliases] = useState<Alias[]>(initialSession.session?.aliases ?? []);
   const [supplierDraft, setSupplierDraft] = useState({ name: "", distance: "", notes: "" });
   const [itemDraft, setItemDraft] = useState({ buyer: "Jorge", product: "", quantity: 1, unit: "kg" as Unit });
-  const [aliasDraft, setAliasDraft] = useState({ from: "", to: "" });
   const [orderText, setOrderText] = useState("");
   const [importedItems, setImportedItems] = useState<PurchaseItem[]>([]);
   const [expandedSupplierIds, setExpandedSupplierIds] = useState<string[]>([]);
@@ -33,7 +31,6 @@ export default function BuyerApp() {
     () => calculateStrategy(suppliers, lists, items, aliases),
     [suppliers, lists, items, aliases],
   );
-  const offers = useMemo(() => buildOffers(lists, aliases), [lists, aliases]);
   const unresolved = strategy.comparisons.filter((comparison) => comparison.unresolved);
   const detectedProducts = lists.reduce((total, list) => total + list.rows.filter((row) => row.product.trim()).length, 0);
 
@@ -107,12 +104,6 @@ export default function BuyerApp() {
     setExpandedSupplierIds((current) => current.includes(supplierId)
       ? current.filter((id) => id !== supplierId)
       : [...current, supplierId]);
-  }
-
-  function addAlias(from = aliasDraft.from, to = aliasDraft.to) {
-    if (!from.trim() || !to.trim()) return;
-    setAliases((current) => [...current, { id: crypto.randomUUID(), from: from.trim(), to: to.trim() }]);
-    setAliasDraft({ from: "", to: "" });
   }
 
   function updateRow(listId: string, rowId: string, patch: Partial<PriceRow>) {
@@ -191,7 +182,6 @@ export default function BuyerApp() {
       <nav className="quick-nav" aria-label="Navegación rápida">
         <a href="#proveedores">Proveedores</a>
         <a href="#pedido">Pedido</a>
-        <a href="#aliases">Aliases</a>
         <a href="#reporte">Reporte</a>
       </nav>
 
@@ -306,37 +296,9 @@ export default function BuyerApp() {
         )}
       </section>
 
-      <section id="aliases">
-        <div className="section-title">
-          <div><span className="step">3</span><h2>Aliases y coincidencias</h2></div>
-          <p>Las coincidencias exactas se agrupan solas. Confirmá únicamente las variantes que realmente equivalen.</p>
-        </div>
-        <form className="form-grid alias-form" onSubmit={(event) => { event.preventDefault(); addAlias(); }}>
-          <label>Nombre en lista<input value={aliasDraft.from} onChange={(event) => setAliasDraft({ ...aliasDraft, from: event.target.value })} placeholder="Almendra pelada" /></label>
-          <label>Equivale a<input value={aliasDraft.to} onChange={(event) => setAliasDraft({ ...aliasDraft, to: event.target.value })} placeholder="Almendra natural" /></label>
-          <button type="submit">Agregar alias</button>
-        </form>
-        {!!aliases.length && <div className="chips">{aliases.map((alias) => <span className="chip" key={alias.id}>{alias.from} → {alias.to}<button onClick={() => setAliases((current) => current.filter((item) => item.id !== alias.id))}>×</button></span>)}</div>}
-        {unresolved.map((comparison) => {
-          const candidates = offers
-            .map((offer) => ({ offer, score: similarity(comparison.item.product, offer.product) }))
-            .filter(({ score }) => score >= 0.45)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 4);
-          return (
-            <div className="match-card" key={comparison.item.id}>
-              <strong>Sin coincidencia: {comparison.item.product}</strong>
-              {!candidates.length ? <p>No encontramos sugerencias. Podés crear un alias manual arriba.</p> : <div className="chips">
-                {candidates.map(({ offer, score }) => <button className="suggestion" key={offer.id} onClick={() => addAlias(offer.product, comparison.item.product)}>Confirmar “{offer.product}” · {Math.round(score * 100)}%</button>)}
-              </div>}
-            </div>
-          );
-        })}
-      </section>
-
       <section id="reporte">
         <div className="section-title">
-          <div><span className="step">4</span><h2>Reporte de compra</h2></div>
+          <div><span className="step">3</span><h2>Reporte de compra</h2></div>
           <button disabled={!items.length} onClick={() => downloadStrategyCsv(strategy, suppliers)}>Descargar CSV</button>
         </div>
         <div className="metrics">
@@ -349,8 +311,8 @@ export default function BuyerApp() {
           <>
             <div className="table-wrap report"><table><thead><tr><th>Comprador</th><th>Producto</th><th>Pedido</th><th>Mejor proveedor</th><th>Archivo origen</th><th>Precio normalizado</th><th>Segundo proveedor</th><th>Diferencia</th><th>Subtotal</th></tr></thead><tbody>
               {strategy.comparisons.map((comparison) => <tr className={comparison.unresolved ? "unresolved" : ""} key={comparison.item.id}>
-                <td>{comparison.item.buyer}</td><td>{comparison.item.product}</td><td>{comparison.item.quantity} {comparison.item.unit}</td><td>{supplierName(comparison.best?.supplierId)}</td>
-                <td>{comparison.best ? `${comparison.best.fileName} · fila ${comparison.best.sourceRow}` : "Sin oferta comparable"}</td><td>{comparison.best ? `${money.format(comparison.best.normalizedUnitPrice)} / ${comparison.best.baseUnit}` : "—"}</td>
+                <td>{comparison.item.buyer}</td><td>{comparison.item.product}</td><td>{comparison.item.quantity} {comparison.item.unit}</td><td>{comparison.best ? supplierName(comparison.best.supplierId) : "Sin coincidencia"}</td>
+                <td>{comparison.best ? `${comparison.best.fileName} · fila ${comparison.best.sourceRow}` : "Sin coincidencia"}</td><td>{comparison.best ? `${money.format(comparison.best.normalizedUnitPrice)} / ${comparison.best.baseUnit}` : "—"}</td>
                 <td>{comparison.second ? supplierName(comparison.second.supplierId) : "—"}</td><td>{percent(comparison.spreadPercent)}</td><td>{comparison.best ? money.format(comparison.best.subtotal) : "—"}</td>
               </tr>)}
             </tbody></table></div>

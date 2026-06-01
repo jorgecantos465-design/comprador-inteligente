@@ -67,3 +67,34 @@ lino 1/2 kg
     { buyer: "Sin asignar", product: "manzanas", quantity: 3, unit: "unit" },
   ]);
 });
+
+test("keeps buyers from plain block headings and supports tab-separated rows", async () => {
+  const { parseOrderText } = await loadParser();
+  const items = parseOrderText(`Jorge
+Producto	Cantidad
+Sésamo Integral	1kg
+Pasas Negras Premium	1kg
+Lino Marrón Limpio de Primera	1kg
+Girasol Pelado Limpio G1 (Premium)	1kg
+Maní sin sal Premium	1kg
+Almendras Partidas	1 kg
+Avena Instantánea	1 kg
+nueces 1kg
+
+Maria
+Almendras partidas  1kg
+mani  sin sal  1 kg
+mix clasico 1kg
+
+Flor
+AVENA ARROLLADA INSTANTANEA 1 kg
+SAL DEL HIMALAYA FINA 1 kg
+QUINOA (QUINUA) NACIONAL 1 kg`);
+
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(Object.groupBy(items, (item) => item.buyer)).map(([buyer, buyerItems]) => [buyer, buyerItems.length])),
+    { Jorge: 8, Maria: 3, Flor: 3 },
+  );
+  assert.equal(items.some((item) => item.buyer === "Sin asignar"), false);
+  assert.equal(items.some((item) => ["Producto", "Cantidad", "Producto Cantidad"].includes(item.product)), false);
+});

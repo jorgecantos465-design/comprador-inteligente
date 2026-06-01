@@ -36,9 +36,8 @@ npm run build
 4. Agregar productos al pedido manual, indicando comprador, cantidad y unidad.
    También se puede pegar una lista de WhatsApp o texto libre, previsualizar los
    campos detectados y corregirlos antes de incorporarlos al pedido.
-5. Revisar los productos sin coincidencia. Confirmar un alias sugerido o crear
-   uno manual cuando dos nombres representen realmente el mismo producto.
-6. Consultar la estrategia óptima, los totales y la alternativa de comprar todo
+5. Consultar la estrategia óptima, los totales y los productos sin coincidencia.
+6. Revisar la alternativa de comprar todo
    a un único proveedor cuando exista.
 7. Descargar el reporte CSV.
 
@@ -67,16 +66,16 @@ lista manual dentro del proveedor y completar, agregar o quitar filas.
 - Convierte texto a minúsculas.
 - Quita tildes y puntuación.
 - Aplica singularización básica.
+- Quita unidades y presentaciones comerciales del nombre comparable.
 - Agrupa coincidencias exactas.
-- Sugiere variantes parecidas para confirmación manual.
-- Mantiene aliases en la sesión local del navegador.
+- Conserva aliases previamente guardados para compatibilidad interna.
 
 Las variantes dudosas no se fusionan automáticamente.
 
 ## Guardado local
 
-La aplicación guarda automáticamente proveedores, listas procesadas, aliases y
-el pedido actual en este navegador. No conserva los archivos originales. La
+La aplicación guarda automáticamente proveedores, listas procesadas, aliases
+internos y el pedido actual en este navegador. No conserva los archivos originales. La
 pantalla incluye controles para guardar manualmente, limpiar solo el pedido,
 borrar la sesión guardada o borrar todo.
 
