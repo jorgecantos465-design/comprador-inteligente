@@ -59,7 +59,7 @@ export function parseUnit(value: unknown): Unit {
   if (["g", "gr", "gramo", "gramos"].includes(text)) return "g";
   if (["l", "lt", "litro", "litros"].includes(text)) return "l";
   if (["ml", "mililitro", "mililitros"].includes(text)) return "ml";
-  if (["pack", "paquete", "caja"].includes(text)) return "pack";
+  if (["pack", "packs", "paquete", "paquetes", "caja", "cajas"].includes(text)) return "pack";
   return "unit";
 }
 

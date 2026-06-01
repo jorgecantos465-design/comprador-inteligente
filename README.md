@@ -33,6 +33,8 @@ npm run build
 3. Revisar y corregir las filas importadas. Cada precio conserva su archivo y
    fila de origen.
 4. Agregar productos al pedido manual, indicando comprador, cantidad y unidad.
+   También se puede pegar una lista de WhatsApp o texto libre, previsualizar los
+   campos detectados y corregirlos antes de incorporarlos al pedido.
 5. Revisar los productos sin coincidencia. Confirmar un alias sugerido o crear
    uno manual cuando dos nombres representen realmente el mismo producto.
 6. Consultar la estrategia óptima, los totales y la alternativa de comprar todo

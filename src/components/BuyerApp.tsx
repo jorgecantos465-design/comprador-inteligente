@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { buildOffers, calculateStrategy } from "../domain/calculate";
 import { downloadStrategyCsv } from "../domain/exportCsv";
 import { similarity } from "../domain/normalize";
+import { parseOrderText } from "../domain/parseOrderText";
 import type { Alias, PriceList, PriceRow, PurchaseItem, Supplier, Unit } from "../domain/types";
 import { parsePriceFile } from "../parsers/parseFile";
 
@@ -16,8 +17,12 @@ export default function BuyerApp() {
   const [supplierDraft, setSupplierDraft] = useState({ name: "", distance: "", notes: "" });
   const [itemDraft, setItemDraft] = useState({ buyer: "Jorge", product: "", quantity: 1, unit: "kg" as Unit });
   const [aliasDraft, setAliasDraft] = useState({ from: "", to: "" });
+  const [orderText, setOrderText] = useState("");
+  const [importedItems, setImportedItems] = useState<PurchaseItem[]>([]);
+  const [expandedSupplierIds, setExpandedSupplierIds] = useState<string[]>([]);
   const [busySupplierId, setBusySupplierId] = useState("");
   const [message, setMessage] = useState("");
+  const supplierNameRef = useRef<HTMLInputElement>(null);
 
   const strategy = useMemo(
     () => calculateStrategy(suppliers, lists, items, aliases),
@@ -25,11 +30,14 @@ export default function BuyerApp() {
   );
   const offers = useMemo(() => buildOffers(lists, aliases), [lists, aliases]);
   const unresolved = strategy.comparisons.filter((comparison) => comparison.unresolved);
+  const detectedProducts = lists.reduce((total, list) => total + list.rows.filter((row) => row.product.trim()).length, 0);
 
   function addSupplier(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supplierDraft.name.trim()) return;
-    setSuppliers((current) => [...current, { id: crypto.randomUUID(), ...supplierDraft, name: supplierDraft.name.trim() }]);
+    const id = crypto.randomUUID();
+    setSuppliers((current) => [...current, { id, ...supplierDraft, name: supplierDraft.name.trim() }]);
+    setExpandedSupplierIds((current) => [...current, id]);
     setSupplierDraft({ name: "", distance: "", notes: "" });
   }
 
@@ -60,6 +68,31 @@ export default function BuyerApp() {
     if (!itemDraft.buyer.trim() || !itemDraft.product.trim() || itemDraft.quantity <= 0) return;
     setItems((current) => [...current, { id: crypto.randomUUID(), ...itemDraft, buyer: itemDraft.buyer.trim(), product: itemDraft.product.trim() }]);
     setItemDraft((current) => ({ ...current, product: "", quantity: 1 }));
+  }
+
+  function previewOrderText() {
+    setImportedItems(parseOrderText(orderText));
+  }
+
+  function updateImportedItem(id: string, patch: Partial<PurchaseItem>) {
+    setImportedItems((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+  }
+
+  function addImportedItems() {
+    setItems((current) => [...current, ...importedItems.filter((item) => item.product.trim() && item.quantity > 0)]);
+    setImportedItems([]);
+    setOrderText("");
+  }
+
+  function focusSupplierForm() {
+    document.querySelector("#proveedores")?.scrollIntoView({ behavior: "smooth" });
+    supplierNameRef.current?.focus();
+  }
+
+  function toggleSupplier(supplierId: string) {
+    setExpandedSupplierIds((current) => current.includes(supplierId)
+      ? current.filter((id) => id !== supplierId)
+      : [...current, supplierId]);
   }
 
   function addAlias(from = aliasDraft.from, to = aliasDraft.to) {
@@ -115,56 +148,78 @@ export default function BuyerApp() {
         <p>Consolidá listas de proveedores y encontrá dónde conviene comprar cada producto.</p>
       </header>
 
+      <nav className="quick-nav" aria-label="Navegación rápida">
+        <a href="#proveedores">Proveedores</a>
+        <a href="#pedido">Pedido</a>
+        <a href="#aliases">Aliases</a>
+        <a href="#reporte">Reporte</a>
+      </nav>
+
       {message && <div className="alert error">{message}</div>}
 
-      <section>
+      <section id="proveedores">
         <div className="section-title">
           <div><span className="step">1</span><h2>Proveedores y listas</h2></div>
           <p>Cada proveedor puede tener varios archivos. Todos se comparan como una oferta consolidada.</p>
         </div>
+        <div className="metrics supplier-metrics">
+          <Metric label="Proveedores cargados" value={String(suppliers.length)} />
+          <Metric label="Listas cargadas" value={String(lists.length)} />
+          <Metric label="Productos detectados" value={String(detectedProducts)} />
+        </div>
         <form className="form-grid supplier-form" onSubmit={addSupplier}>
-          <label>Nombre<input value={supplierDraft.name} onChange={(event) => setSupplierDraft({ ...supplierDraft, name: event.target.value })} placeholder="Proveedor A" required /></label>
+          <label>Nombre<input ref={supplierNameRef} value={supplierDraft.name} onChange={(event) => setSupplierDraft({ ...supplierDraft, name: event.target.value })} placeholder="Proveedor A" required /></label>
           <label>Distancia o cercanía<input value={supplierDraft.distance} onChange={(event) => setSupplierDraft({ ...supplierDraft, distance: event.target.value })} placeholder="Opcional" /></label>
           <label>Observaciones<input value={supplierDraft.notes} onChange={(event) => setSupplierDraft({ ...supplierDraft, notes: event.target.value })} placeholder="Opcional" /></label>
           <button type="submit">Crear proveedor</button>
         </form>
+        <button className="add-supplier" onClick={focusSupplierForm}>Agregar otro proveedor</button>
 
         {!suppliers.length && <Empty text="Creá el primer proveedor para adjuntar sus listas." />}
         <div className="supplier-grid">
           {suppliers.map((supplier) => {
             const supplierLists = lists.filter((list) => list.supplierId === supplier.id);
+            const expanded = expandedSupplierIds.includes(supplier.id);
             return (
               <article className="supplier-card" key={supplier.id}>
                 <div className="card-head">
-                  <div><h3>{supplier.name}</h3><p>{supplier.distance || "Sin distancia"}{supplier.notes ? ` · ${supplier.notes}` : ""}</p></div>
-                  <button className="danger ghost" onClick={() => {
-                    setSuppliers((current) => current.filter((item) => item.id !== supplier.id));
-                    setLists((current) => current.filter((list) => list.supplierId !== supplier.id));
-                  }}>Eliminar</button>
-                </div>
-                <label className="upload">
-                  <span>{busySupplierId === supplier.id ? "Procesando…" : "Adjuntar listas XLSX, CSV o PDF"}</span>
-                  <input type="file" multiple accept=".xlsx,.xls,.csv,.pdf" onChange={(event) => void addFiles(supplier.id, event.target.files)} />
-                </label>
-                <button className="secondary" onClick={() => addManualList(supplier.id)}>Crear lista manual</button>
-                {supplierLists.map((list) => (
-                  <div className="file-block" key={list.id}>
-                    <div className="file-title">
-                      <strong>{list.fileName}</strong>
-                      <span>{list.rows.length} filas · {list.sourceType.toUpperCase()}</span>
-                      <button className="danger ghost" onClick={() => setLists((current) => current.filter((item) => item.id !== list.id))}>Quitar</button>
-                    </div>
-                    {list.warnings.map((warning) => <div className="alert warning" key={warning}>{warning}</div>)}
-                    <EditablePriceRows list={list} updateRow={updateRow} addRow={addRow} removeRow={removeRow} />
+                  <button className="supplier-toggle" aria-expanded={expanded} onClick={() => toggleSupplier(supplier.id)}>
+                    <span>{expanded ? "−" : "+"}</span>
+                    <span><strong>{supplier.name}</strong><small>{supplierLists.length} listas · {supplierLists.reduce((total, list) => total + list.rows.filter((row) => row.product.trim()).length, 0)} productos</small></span>
+                  </button>
+                  <div className="supplier-actions">
+                    <small>{supplier.distance || "Sin distancia"}{supplier.notes ? ` · ${supplier.notes}` : ""}</small>
+                    <button className="danger ghost" onClick={() => {
+                      setSuppliers((current) => current.filter((item) => item.id !== supplier.id));
+                      setLists((current) => current.filter((list) => list.supplierId !== supplier.id));
+                    }}>Eliminar</button>
                   </div>
-                ))}
+                </div>
+                {expanded && <div className="supplier-content">
+                  <label className="upload">
+                    <span>{busySupplierId === supplier.id ? "Procesando…" : "Adjuntar listas XLSX, CSV o PDF"}</span>
+                    <input type="file" multiple accept=".xlsx,.xls,.csv,.pdf" onChange={(event) => void addFiles(supplier.id, event.target.files)} />
+                  </label>
+                  <button className="secondary" onClick={() => addManualList(supplier.id)}>Crear lista manual</button>
+                  {supplierLists.map((list) => (
+                    <div className="file-block" key={list.id}>
+                      <div className="file-title">
+                        <strong>{list.fileName}</strong>
+                        <span>{list.rows.length} filas · {list.sourceType.toUpperCase()}</span>
+                        <button className="danger ghost" onClick={() => setLists((current) => current.filter((item) => item.id !== list.id))}>Quitar</button>
+                      </div>
+                      {list.warnings.map((warning) => <div className="alert warning" key={warning}>{warning}</div>)}
+                      <EditablePriceRows list={list} updateRow={updateRow} addRow={addRow} removeRow={removeRow} />
+                    </div>
+                  ))}
+                </div>}
               </article>
             );
           })}
         </div>
       </section>
 
-      <section>
+      <section id="pedido">
         <div className="section-title">
           <div><span className="step">2</span><h2>Pedido</h2></div>
           <p>Cargá varios compradores en un mismo pedido.</p>
@@ -177,6 +232,15 @@ export default function BuyerApp() {
           <label>Unidad<select value={itemDraft.unit} onChange={(event) => setItemDraft({ ...itemDraft, unit: event.target.value as Unit })}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
           <button type="submit">Agregar ítem</button>
         </form>
+        <div className="text-import">
+          <div>
+            <h3>Importar pedido desde texto</h3>
+            <p>Pegá un mensaje de WhatsApp o una lista libre. Vas a poder revisar los ítems antes de agregarlos.</p>
+          </div>
+          <textarea value={orderText} onChange={(event) => setOrderText(event.target.value)} placeholder={"Jorge:\n1 kg almendras\n500 gr nuez\n\nMamá:\n2 kg harina de almendra"} />
+          <button className="secondary" disabled={!orderText.trim()} onClick={previewOrderText}>Previsualizar pedido</button>
+          {!!importedItems.length && <ImportedItemsPreview items={importedItems} updateItem={updateImportedItem} removeItem={(id) => setImportedItems((current) => current.filter((item) => item.id !== id))} addItems={addImportedItems} />}
+        </div>
         {!items.length ? <Empty text="Todavía no hay productos en el pedido." /> : (
           <div className="table-wrap"><table><thead><tr><th>Comprador</th><th>Producto</th><th>Cantidad</th><th>Unidad</th><th></th></tr></thead><tbody>
             {items.map((item) => <tr key={item.id}><td>{item.buyer}</td><td>{item.product}</td><td>{item.quantity}</td><td>{item.unit}</td><td><button className="danger ghost" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))}>Quitar</button></td></tr>)}
@@ -184,7 +248,7 @@ export default function BuyerApp() {
         )}
       </section>
 
-      <section>
+      <section id="aliases">
         <div className="section-title">
           <div><span className="step">3</span><h2>Aliases y coincidencias</h2></div>
           <p>Las coincidencias exactas se agrupan solas. Confirmá únicamente las variantes que realmente equivalen.</p>
@@ -212,7 +276,7 @@ export default function BuyerApp() {
         })}
       </section>
 
-      <section>
+      <section id="reporte">
         <div className="section-title">
           <div><span className="step">4</span><h2>Reporte de compra</h2></div>
           <button disabled={!items.length} onClick={() => downloadStrategyCsv(strategy, suppliers)}>Descargar CSV</button>
@@ -255,6 +319,22 @@ function EditablePriceRows({ list, updateRow, addRow, removeRow }: { list: Price
       <td><button className="danger ghost" onClick={() => removeRow(list.id, row.id)}>Quitar</button></td>
     </tr>)}
   </tbody></table><button className="secondary add-row" onClick={() => addRow(list.id)}>Agregar fila</button></div>;
+}
+
+function ImportedItemsPreview({ items, updateItem, removeItem, addItems }: { items: PurchaseItem[]; updateItem: (id: string, patch: Partial<PurchaseItem>) => void; removeItem: (id: string) => void; addItems: () => void }) {
+  return <div className="import-preview">
+    <div className="preview-title"><strong>Revisá los ítems detectados</strong><span>{items.length} ítems</span></div>
+    <div className="table-wrap"><table><thead><tr><th>Comprador</th><th>Producto</th><th>Cantidad</th><th>Unidad</th><th></th></tr></thead><tbody>
+      {items.map((item) => <tr key={item.id}>
+        <td><input value={item.buyer} onChange={(event) => updateItem(item.id, { buyer: event.target.value })} /></td>
+        <td><input value={item.product} onChange={(event) => updateItem(item.id, { product: event.target.value })} /></td>
+        <td><input type="number" min="0.001" step="any" value={item.quantity} onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })} /></td>
+        <td><select value={item.unit} onChange={(event) => updateItem(item.id, { unit: event.target.value as Unit })}>{units.map((unit) => <option key={unit}>{unit}</option>)}</select></td>
+        <td><button className="danger ghost" onClick={() => removeItem(item.id)}>Quitar</button></td>
+      </tr>)}
+    </tbody></table></div>
+    <button onClick={addItems}>Agregar ítems al pedido</button>
+  </div>;
 }
 
 function Empty({ text }: { text: string }) { return <div className="empty">{text}</div>; }
