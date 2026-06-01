@@ -30,6 +30,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .danger { color: #ad482e; }
 .secondary { border-color: #b8cec7; background: #edf5f2; color: #245c52; }
 .add-row { margin-top: 8px; }
+.clear-order { margin-top: 12px; }
 .add-supplier { margin-bottom: 14px; border-color: #c76a43; background: #c76a43; }
 .supplier-grid { display: grid; gap: 14px; }
 .supplier-card { padding: 15px; border: 1px solid #e1ded6; border-radius: 12px; }

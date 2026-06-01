@@ -242,9 +242,12 @@ export default function BuyerApp() {
           {!!importedItems.length && <ImportedItemsPreview items={importedItems} updateItem={updateImportedItem} removeItem={(id) => setImportedItems((current) => current.filter((item) => item.id !== id))} addItems={addImportedItems} />}
         </div>
         {!items.length ? <Empty text="Todavía no hay productos en el pedido." /> : (
-          <div className="table-wrap"><table><thead><tr><th>Comprador</th><th>Producto</th><th>Cantidad</th><th>Unidad</th><th></th></tr></thead><tbody>
-            {items.map((item) => <tr key={item.id}><td>{item.buyer}</td><td>{item.product}</td><td>{item.quantity}</td><td>{item.unit}</td><td><button className="danger ghost" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))}>Quitar</button></td></tr>)}
-          </tbody></table></div>
+          <>
+            <div className="table-wrap"><table><thead><tr><th>Comprador</th><th>Producto</th><th>Cantidad</th><th>Unidad</th><th></th></tr></thead><tbody>
+              {items.map((item) => <tr key={item.id}><td>{item.buyer}</td><td>{item.product}</td><td>{item.quantity}</td><td>{item.unit}</td><td><button className="danger ghost" onClick={() => setItems((current) => current.filter((row) => row.id !== item.id))}>Quitar</button></td></tr>)}
+            </tbody></table></div>
+            <button className="danger secondary clear-order" onClick={() => setItems([])}>Limpiar pedido completo</button>
+          </>
         )}
       </section>
 
