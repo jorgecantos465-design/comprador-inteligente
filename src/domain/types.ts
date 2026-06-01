@@ -13,6 +13,7 @@ export interface PriceRow {
   price: number;
   unit: Unit;
   packageSize: number;
+  category?: string;
   sourceRow: number;
   warnings: string[];
 }

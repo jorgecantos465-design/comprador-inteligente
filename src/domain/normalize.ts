@@ -88,3 +88,18 @@ export function parsePrice(value: unknown): number {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 }
+
+export function parseArgentinePrice(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const raw = String(value ?? "")
+    .replace(/[^\d,.-]/gu, "")
+    .trim();
+  if (!raw) return 0;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./gu, "").replace(",", ".")
+    : /^-?\d{1,3}(?:\.\d{3})+$/u.test(raw)
+      ? raw.replace(/\./gu, "")
+      : raw;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}

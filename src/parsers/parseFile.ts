@@ -1,7 +1,8 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { parsePrice, parseUnit } from "../domain/normalize";
+import { parseArgentinePrice, parsePrice, parseUnit } from "../domain/normalize";
 import type { PriceRow } from "../domain/types";
+import { parseExcelSheet } from "./parseExcelTable";
 
 export interface ParsedPriceList {
   sourceType: "xlsx" | "csv" | "pdf";
@@ -44,8 +45,8 @@ async function parseExcel(file: File): Promise<ParsedPriceList> {
     ? [`Se importó la primera hoja: ${workbook.SheetNames[0]}.`]
     : [];
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<LooseRow>(firstSheet, { defval: "" });
-  return { sourceType: "xlsx", rows: mapLooseRows(rows), warnings };
+  const parsed = parseExcelSheet(firstSheet);
+  return { sourceType: "xlsx", rows: parsed.rows, warnings: [...warnings, ...parsed.warnings] };
 }
 
 async function parsePdf(file: File): Promise<ParsedPriceList> {
@@ -74,7 +75,7 @@ async function parsePdf(file: File): Promise<ParsedPriceList> {
     return [{
       id: crypto.randomUUID(),
       product: match[1].trim(),
-      price: parsePrice(match[2]),
+      price: parseArgentinePrice(match[2]),
       unit: parseUnit(match[3]),
       packageSize: 1,
       sourceRow: index + 1,
